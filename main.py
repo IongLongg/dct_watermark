@@ -2,16 +2,31 @@ import argparse
 
 import cv2
 import inquirer
+import numpy as np
 
 from attack import Attack
 from dct_watermark import DCT_Watermark
+
+def psnr(im1, im2):
+    if im1.shape != im2.shape or len(im2.shape) < 2:
+        return 0
+
+    di = im2.shape[0] * im2.shape[1]
+    if len(im2.shape) == 3:
+        di = im2.shape[0] * im2.shape[1] * im2.shape[2]
+
+    diff = np.abs(im1 - im2)
+    rmse = np.sum(diff * diff) / di
+    print('MSE: {}'.format(rmse))
+    psnr = 20 * np.log10(255 / rmse)
+    return psnr
 
 def main(args):
   img = cv2.imread(args.origin)
   wm = cv2.imread(args.watermark, cv2.IMREAD_GRAYSCALE)
 
   questions = [
-      inquirer.List("type", message="Choice type", choices=["DCT", "Attack"]),
+      inquirer.List("type", message="Choice type", choices=["DCT", "Attack", "PSNR"]),
   ]
   answers = inquirer.prompt(questions)
   if answers['type'] == "DCT":
@@ -58,6 +73,11 @@ def main(args):
       att_img = ACTION_MAP[answers["action"]](img)
       cv2.imwrite(args.output, att_img)
       print("Save as {}".format(args.output))
+
+  elif answers['type'] == 'PSNR':
+      og = cv2.imread(args.origin);
+      wm = cv2.imread(args.output);
+      print('PSNR : {}'.format(psnr(og, wm)))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog="compare", formatter_class=argparse.RawTextHelpFormatter)
